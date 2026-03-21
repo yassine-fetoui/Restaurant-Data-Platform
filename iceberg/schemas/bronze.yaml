@@ -1,0 +1,176 @@
+# iceberg/schemas/bronze.yaml
+# Iceberg table definitions for the Bronze (raw ingestion) layer
+# Applied by scripts/setup/init_iceberg.py
+
+catalog:
+  type: glue
+  warehouse: s3://restaurant-iceberg-prod/
+
+tables:
+
+  - identifier: bronze.pos_transactions
+    description: "Raw POS orders from Toast/Square APIs — payment data tokenised at ingestion"
+    schema:
+      fields:
+        - id: 1
+          name: order_id
+          type: string
+          required: true
+        - id: 2
+          name: location_id
+          type: string
+          required: true
+        - id: 3
+          name: order_time
+          type: timestamptz
+          required: true
+        - id: 4
+          name: ready_time
+          type: timestamptz
+          required: false
+        - id: 5
+          name: menu_item_id
+          type: string
+          required: true
+        - id: 6
+          name: quantity_sold
+          type: double
+          required: true
+        - id: 7
+          name: unit_price
+          type: decimal(10, 2)
+          required: true
+        - id: 8
+          name: total_amount
+          type: decimal(10, 2)
+          required: true
+        - id: 9
+          name: payment_token
+          type: string
+          required: true
+          doc: "Stripe/Braintree vault token — no raw PAN ever stored"
+        - id: 10
+          name: station_id
+          type: string
+          required: false
+        - id: 11
+          name: _ingested_at
+          type: timestamptz
+          required: true
+    partition_spec:
+      - source: location_id
+        transform: identity
+        name: location_id
+      - source: order_time
+        transform: day
+        name: order_day
+    properties:
+      write.format.default: parquet
+      write.parquet.compression-codec: zstd
+      history.expire.max-snapshot-age-ms: "604800000"   # 7 days
+
+  - identifier: bronze.kitchen_telemetry
+    description: "Raw IoT sensor readings from kitchen equipment"
+    schema:
+      fields:
+        - id: 1
+          name: sensor_id
+          type: string
+          required: true
+        - id: 2
+          name: location_id
+          type: string
+          required: true
+        - id: 3
+          name: equipment_type
+          type: string
+          required: true
+          doc: "grill | fryer | fridge | freezer | dishwasher"
+        - id: 4
+          name: equipment_id
+          type: string
+          required: true
+        - id: 5
+          name: timestamp
+          type: timestamptz
+          required: true
+        - id: 6
+          name: temperature_f
+          type: double
+          required: false
+        - id: 7
+          name: status
+          type: string
+          required: true
+          doc: "normal | warning | critical"
+        - id: 8
+          name: cook_time_seconds
+          type: long
+          required: false
+        - id: 9
+          name: station_id
+          type: string
+          required: false
+    partition_spec:
+      - source: location_id
+        transform: identity
+        name: location_id
+      - source: timestamp
+        transform: hour
+        name: hour
+      - source: status
+        transform: identity
+        name: status
+    properties:
+      write.format.default: parquet
+      write.parquet.compression-codec: zstd
+      # Food safety: 7-year immutable retention
+      history.expire.max-snapshot-age-ms: "220898482000"
+
+  - identifier: bronze.inventory_receipts
+    description: "Raw inventory receipts from vendor EDI and manual scans"
+    schema:
+      fields:
+        - id: 1
+          name: receipt_id
+          type: string
+          required: true
+        - id: 2
+          name: location_id
+          type: string
+          required: true
+        - id: 3
+          name: supplier_id
+          type: string
+          required: true
+        - id: 4
+          name: menu_item_id
+          type: string
+          required: true
+        - id: 5
+          name: quantity_received
+          type: double
+          required: true
+        - id: 6
+          name: unit_cost
+          type: decimal(10, 4)
+          required: true
+        - id: 7
+          name: received_at
+          type: timestamptz
+          required: true
+        - id: 8
+          name: expiry_date
+          type: date
+          required: false
+        - id: 9
+          name: lot_number
+          type: string
+          required: false
+    partition_spec:
+      - source: location_id
+        transform: identity
+        name: location_id
+      - source: received_at
+        transform: month
+        name: received_month

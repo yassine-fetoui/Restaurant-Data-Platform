@@ -1,0 +1,64 @@
+# data-quality/soda/checks/kitchen_telemetry.yml
+# Soda Core data quality checks for bronze.kitchen_telemetry
+# Run: soda scan -d snowflake -c soda_config.yml kitchen_telemetry.yml
+
+checks for bronze.kitchen_telemetry:
+
+  # ── Volume ────────────────────────────────────────────────────────────────
+  - row_count > 0:
+      name: "telemetry table is not empty"
+
+  - freshness(timestamp) < 2h:
+      name: "IoT data arrived within the last 2 hours"
+      alert:
+        when failed: pagerduty  # Food safety critical path
+
+  # ── Nullness ──────────────────────────────────────────────────────────────
+  - missing_count(sensor_id) = 0:
+      name: "sensor_id is never null"
+
+  - missing_count(location_id) = 0:
+      name: "location_id is never null"
+
+  - missing_count(timestamp) = 0:
+      name: "timestamp is never null"
+
+  - missing_count(status) = 0:
+      name: "status is never null"
+
+  # ── Value validity ────────────────────────────────────────────────────────
+  - invalid_count(status) = 0:
+      name: "status is one of: normal, warning, critical"
+      valid values: [normal, warning, critical]
+
+  - invalid_count(equipment_type) = 0:
+      name: "equipment_type is in allowed set"
+      valid values: [grill, fryer, fridge, freezer, dishwasher, oven, salamander]
+
+  # ── Temperature range checks (food safety) ────────────────────────────────
+  - min(temperature_f) > -50:
+      name: "temperature readings above -50°F (sensor sanity check)"
+
+  - max(temperature_f) < 1000:
+      name: "temperature readings below 1000°F (sensor sanity check)"
+
+  # ── Food safety: critical fridge temperature violations ───────────────────
+  - failed rows:
+      name: "FOOD SAFETY: fridge temperature above 40°F"
+      fail condition: equipment_type = 'fridge' AND temperature_f > 40 AND status != 'critical'
+      samples limit: 50
+      alert:
+        when failed: pagerduty
+
+  # ── Duplicates ────────────────────────────────────────────────────────────
+  - duplicate_count(sensor_id, timestamp) < 100:
+      name: "duplicate sensor readings within acceptable range"
+
+  # ── Distribution ──────────────────────────────────────────────────────────
+  - avg(temperature_f) between -10 and 500:
+      name: "average temperature is in plausible cooking range"
+      filter: equipment_type IN ('grill', 'fryer', 'oven')
+
+  - avg(temperature_f) between 28 and 42:
+      name: "average fridge temperature is in safe range"
+      filter: equipment_type IN ('fridge', 'freezer')

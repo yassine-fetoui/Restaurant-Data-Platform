@@ -1,0 +1,67 @@
+# ─── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ─── Airflow ──────────────────────────────────────────────────────────────────
+airflow/logs/
+airflow/airflow.db
+airflow/webserver_config.py
+airflow/*.pid
+airflow/standalone_admin_password.txt
+
+# ─── Terraform ────────────────────────────────────────────────────────────────
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/.terraform.lock.hcl
+**/crash.log
+**/override.tf
+**/*_override.tf
+.terraformrc
+terraform.rc
+
+# ─── Secrets & Credentials ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials/
+**/.snowsql/config
+
+# ─── Data files ───────────────────────────────────────────────────────────────
+*.csv
+*.parquet
+*.json
+# Keep schema/expectation JSON files
+!**/schemas/*.json
+!**/expectations/*.json
+!**/dashboards/*.json
+
+# ─── IDE & OS ─────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ─── Testing & Coverage ───────────────────────────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

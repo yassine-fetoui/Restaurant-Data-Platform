@@ -1,0 +1,59 @@
+name: Deploy Airflow DAGs
+
+on:
+  push:
+    branches:
+      - develop     # → dev environment
+      - main        # → prod environment
+    paths:
+      - "airflow/dags/**"
+      - "airflow/plugins/**"
+      - "airflow/config/**"
+
+jobs:
+  deploy:
+    name: Deploy DAGs to ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+
+    permissions:
+      id-token: write   # Required for OIDC
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Set environment
+        id: env
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "bucket=${{ secrets.AIRFLOW_BUCKET_PROD }}" >> $GITHUB_OUTPUT
+          else
+            echo "env=dev" >> $GITHUB_OUTPUT
+            echo "bucket=${{ secrets.AIRFLOW_BUCKET_DEV }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Sync DAGs to S3
+        run: |
+          aws s3 sync airflow/dags/ s3://${{ steps.env.outputs.bucket }}/dags/ --delete
+          aws s3 sync airflow/plugins/ s3://${{ steps.env.outputs.bucket }}/plugins/ --delete
+          echo "✅ DAGs deployed to ${{ steps.env.outputs.env }}"
+
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "✅ DAGs deployed to *${{ steps.env.outputs.env }}* by `${{ github.actor }}`",
+              "attachments": [{"color": "good", "text": "${{ github.event.head_commit.message }}"}]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
