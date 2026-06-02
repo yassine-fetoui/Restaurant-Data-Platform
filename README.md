@@ -2,45 +2,69 @@
 
 > Enterprise-grade data engineering platform for multi-location restaurant chains — built on **Snowflake**, **Apache Iceberg**, **Apache Airflow**, and **AWS IAM**.
 
-[![CI](https://github.com/YOUR_USERNAME/restaurant-data-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/restaurant-data-platform/actions/workflows/ci.yml)
-[![Terraform](https://github.com/YOUR_USERNAME/restaurant-data-platform/actions/workflows/terraform-apply.yml/badge.svg)](https://github.com/YOUR_USERNAME/restaurant-data-platform/actions/workflows/terraform-apply.yml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 
 ---
 
 ## 📐 Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     EDGE INGESTION LAYER                         │
-│   Toast/Square POS │ Kitchen IoT │ Inventory │ Delivery APIs     │
-│           └──────────────┬──────────────┘                        │
-│                   AWS IoT Core + Kafka (MSK)                     │
-└──────────────────────────┬──────────────────────────────────────┘
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              APACHE ICEBERG DATA LAKE (S3)                       │
-│   Bronze (raw) → Silver (cleaned, PII-masked) → Gold (BI/ML)    │
-│   • Time-travel  • Schema evolution  • ACID transactions         │
-└──────────────────────────┬──────────────────────────────────────┘
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       SNOWFLAKE                                   │
-│   Corporate HQ │ Regional Ops │ Secure Data Sharing              │
-│   • Dynamic Tables  • Row Access Policies  • Column Masking      │
-└──────────────────────────┬──────────────────────────────────────┘
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│               APACHE AIRFLOW (Orchestration)                     │
-│   Real-time (15min) │ Daily (6 AM) │ Weekly (ML retraining)      │
-│   Astronomer / MWAA / EKS                                        │
-└──────────────────────────┬──────────────────────────────────────┘
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│             IAM & SECURITY (PCI-DSS + SOC2)                      │
-│   ABAC Franchisee Isolation │ Payment Tokenization │ Audit Trail  │
-└─────────────────────────────────────────────────────────────────┘
+graph TD
+    subgraph EdgeIngestionLayer ["Edge Ingestion Layer"]
+        POS["Toast/Square POS"]
+        KitchenIoT["Kitchen IoT"]
+        Inventory["Inventory"]
+        DeliveryAPIs["Delivery APIs"]
+        AWSIoTKafka["AWS IoT Core + Kafka (MSK)"]
+
+        POS --> AWSIoTKafka
+        KitchenIoT --> AWSIoTKafka
+        Inventory --> AWSIoTKafka
+        DeliveryAPIs --> AWSIoTKafka
+    end
+
+    subgraph ApacheIcebergDataLake ["Apache Iceberg Data Lake (S3)"]
+        Bronze["Bronze (raw)"]
+        Silver["Silver (cleaned, PII-masked)"]
+        Gold["Gold (BI/ML)"]
+
+        AWSIoTKafka --> Bronze
+        Bronze --> Silver
+        Silver --> Gold
+    end
+
+    subgraph Snowflake ["Snowflake"]
+        CorporateHQ["Corporate HQ"]
+        RegionalOps["Regional Ops"]
+        SecureDataSharing["Secure Data Sharing"]
+
+        Gold --> CorporateHQ
+        Gold --> RegionalOps
+        Gold --> SecureDataSharing
+    end
+
+    subgraph ApacheAirflow ["Apache Airflow (Orchestration)"]
+        Realtime["Real-time (15min)"]
+        Daily["Daily (6 AM)"]
+        WeeklyML["Weekly (ML retraining)"]
+        AirflowPlatforms["Astronomer / MWAA / EKS"]
+
+        Gold --> Realtime
+        Gold --> Daily
+        Gold --> WeeklyML
+        Realtime --> AirflowPlatforms
+        Daily --> AirflowPlatforms
+        WeeklyML --> AirflowPlatforms
+    end
+
+    subgraph IAMSecurity ["IAM & Security (PCI-DSS + SOC2)"]
+        ABAC["ABAC Franchisee Isolation"]
+        PaymentTokenization["Payment Tokenization"]
+        AuditTrail["Audit Trail"]
+
+      
+    end
+
 ```
 
 ---
