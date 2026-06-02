@@ -9,7 +9,8 @@
 ## 📐 Architecture Overview
 
 ```
-graph TD
+
+```mermaid
     subgraph EdgeIngestionLayer ["Edge Ingestion Layer"]
         POS["Toast/Square POS"]
         KitchenIoT["Kitchen IoT"]
@@ -64,7 +65,7 @@ graph TD
 
       
     end
-
+```
 ```
 
 ---
