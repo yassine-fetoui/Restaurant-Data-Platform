@@ -10,62 +10,83 @@
 
 ```
 
-```mermaid
-    subgraph EdgeIngestionLayer ["Edge Ingestion Layer"]
-        POS["Toast/Square POS"]
-        KitchenIoT["Kitchen IoT"]
-        Inventory["Inventory"]
-        DeliveryAPIs["Delivery APIs"]
-        AWSIoTKafka["AWS IoT Core + Kafka (MSK)"]
+flowchart LR
 
-        POS --> AWSIoTKafka
-        KitchenIoT --> AWSIoTKafka
-        Inventory --> AWSIoTKafka
-        DeliveryAPIs --> AWSIoTKafka
+    %% =========================
+    %% Edge Ingestion Layer
+    %% =========================
+    subgraph EdgeIngestionLayer["Edge Ingestion Layer"]
+        POS["Toast / Square POS"]
+        KitchenIoT["Kitchen IoT"]
+        Inventory["Inventory Systems"]
+        DeliveryAPIs["Delivery APIs"]
+        Kafka["AWS IoT Core + Kafka (MSK)"]
+
+        POS --> Kafka
+        KitchenIoT --> Kafka
+        Inventory --> Kafka
+        DeliveryAPIs --> Kafka
     end
 
-    subgraph ApacheIcebergDataLake ["Apache Iceberg Data Lake (S3)"]
-        Bronze["Bronze (raw)"]
-        Silver["Silver (cleaned, PII-masked)"]
-        Gold["Gold (BI/ML)"]
+    %% =========================
+    %% Data Lake
+    %% =========================
+    subgraph DataLake["Apache Iceberg Data Lake (Amazon S3)"]
+        Bronze["Bronze Layer (Raw)"]
+        Silver["Silver Layer (Cleaned & PII Masked)"]
+        Gold["Gold Layer (Business Ready)"]
 
-        AWSIoTKafka --> Bronze
+        Kafka --> Bronze
         Bronze --> Silver
         Silver --> Gold
     end
 
-    subgraph Snowflake ["Snowflake"]
-        CorporateHQ["Corporate HQ"]
-        RegionalOps["Regional Ops"]
-        SecureDataSharing["Secure Data Sharing"]
+    %% =========================
+    %% Snowflake
+    %% =========================
+    subgraph Snowflake["Snowflake Data Platform"]
+        CorporateHQ["Corporate HQ Analytics"]
+        RegionalOps["Regional Operations"]
+        SecureSharing["Secure Data Sharing"]
 
         Gold --> CorporateHQ
         Gold --> RegionalOps
-        Gold --> SecureDataSharing
+        Gold --> SecureSharing
     end
 
-    subgraph ApacheAirflow ["Apache Airflow (Orchestration)"]
-        Realtime["Real-time (15min)"]
-        Daily["Daily (6 AM)"]
-        WeeklyML["Weekly (ML retraining)"]
-        AirflowPlatforms["Astronomer / MWAA / EKS"]
+    %% =========================
+    %% Orchestration
+    %% =========================
+    subgraph Airflow["Apache Airflow Orchestration"]
+        Realtime["Real-Time Pipelines (15 min)"]
+        Daily["Daily Pipelines (06:00 AM)"]
+        WeeklyML["Weekly ML Retraining"]
+
+        AirflowPlatform["Astronomer / MWAA / EKS"]
 
         Gold --> Realtime
         Gold --> Daily
         Gold --> WeeklyML
-        Realtime --> AirflowPlatforms
-        Daily --> AirflowPlatforms
-        WeeklyML --> AirflowPlatforms
+
+        Realtime --> AirflowPlatform
+        Daily --> AirflowPlatform
+        WeeklyML --> AirflowPlatform
     end
 
-    subgraph IAMSecurity ["IAM & Security (PCI-DSS + SOC2)"]
-        ABAC["ABAC Franchisee Isolation"]
-        PaymentTokenization["Payment Tokenization"]
-        AuditTrail["Audit Trail"]
-
-      
+    %% =========================
+    %% Security & Governance
+    %% =========================
+    subgraph Security["IAM, Security & Governance"]
+        ABAC["ABAC Franchise Isolation"]
+        Tokenization["Payment Tokenization"]
+        Audit["Audit Trail"]
+        RBAC["Role-Based Access Control"]
     end
-```
+
+    Security -.-> Kafka
+    Security -.-> DataLake
+    Security -.-> Snowflake
+    Security -.-> Airflow
 ```
 
 ---
